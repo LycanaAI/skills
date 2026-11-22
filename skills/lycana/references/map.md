@@ -2,16 +2,16 @@
 
 Follow this when the user asks to map the repository or part of it, or agrees to map placed or unmapped paths. The person approves twice: the mapping plan in the conversation, then each proposal in Lycana.
 
-The layout and the words mapped, placed and unmapped are in [SKILL.md](../SKILL.md): one Architecture diagram, one area diagram per mapped area, detail in subcanvases. Sending a proposal, its exit codes and its answer are in [propose.md](propose.md). This file covers what to map and in which order to send it.
+The layout and the words mapped, placed and unmapped are in [SKILL.md](../SKILL.md): one Architecture diagram, one area diagram per mapped area, detail in subcanvases, boundaries grouping the nodes of each canvas. Sending a proposal, its exit codes and its answer are in [propose.md](propose.md). This file covers what to map and in which order to send it.
 
 ## Limits that shape the work
 
 - One waiting proposal per diagram, counting all its subcanvases. A second one replaces the first. So the canvases of one diagram are approved one after another, never together.
-- An edit addresses one canvas and holds at most 50 operations.
+- An edit addresses one canvas and holds at most 50 operations. Boundaries count.
 - Each proposal costs the person a review, and every subcanvas is one more, sent after the canvas above it is accepted. Plan for few rounds.
 - `lycana create` makes an empty diagram at once, never as a proposal. A Free organization keeps three diagrams: see [setup.md](setup.md#the-free-plan-limit).
 - `upsert_node` finds an existing node by its source on the canvas being edited only. `find` and `outline` do not look inside linked diagrams.
-- Node `description` holds 280 characters, a note 160, `details` 8,000.
+- Node `description` holds 280 characters, a note 160, `details` 8,000. A boundary has a `name` and `details` only: no source, no description.
 
 ## 1. Gather facts
 
@@ -35,8 +35,8 @@ Done when you can name, for every top-level unit in the section, the file it sta
 ## 2. Decide the areas, nodes and depth
 
 - **Derive the areas.** An area is something that runs or ships on its own: an app, a service, a worker, a command-line tool. Frontend and backend are one common result, not a template. A small repository may be one area.
-- **Shared libraries are not areas.** Code that only other parts import gets no area node and no links. When the libraries share a folder, show them as one node on Architecture, such as `Shared libraries` with source `packages`, whose description names them. Otherwise list them under "Left out". Give a library its own node only when the user asks to map it.
-- **Leaf rule.** A node gets a subcanvas only when it has several distinct internal parts with relationships worth drawing. Single files, thin wrappers, generated code, configuration and external systems stay leaves. Do not add a node whose only job is to hold everything else, such as `Source`: put the area's parts on the area diagram's top canvas.
+- **Shared libraries are not areas.** Code that only other parts import gets no area diagram and no links. Show up to about six as one placed node each, inside one boundary named `Shared libraries` on Architecture. More than that: one node for their folder, whose description names them, or "Left out" when they share no folder.
+- **Leaf rule.** A node gets a subcanvas only when it has several distinct internal parts with relationships worth drawing. Single files, thin wrappers, generated code, configuration and external systems stay leaves. Do not add a node whose only job is to hold other nodes, such as `Source` or `Storage layer`: put the parts on the canvas, in a boundary when they are a group of peers.
 - **Ceilings, not targets.** About 20 nodes on a canvas, and three levels of subcanvas below an area diagram. A smaller true map beats a full one: it is read more, and it costs fewer approvals.
 - **Every node is checkable.** Give each node that describes code one source, usually a folder. Run `git ls-files <path>` for every source and drop or fix any that prints nothing. Do not give two nodes on one canvas the same source.
 - **External systems have no source.** A database, queue or third-party API gets a `service` (such as `postgresql.postgresql`) or a `preset` such as `architecture.database`, `architecture.queue` or `architecture.external_system`.
@@ -44,6 +44,25 @@ Done when you can name, for every top-level unit in the section, the file it sta
 - **Describe only what you read.** Write a description from code you opened. Start the description of a node you inferred with `Inferred:`. A placed node gets one line taken from its manifest or README, ending `(from manifest)` or `(from README)`.
 - **Scope.** Map the section asked for. When the user asks for one area, the Architecture diagram gets that area as a node opening its area diagram, every other area as a placed node (a source, a one-line description, nothing beneath it), and only the links that touch the requested area. List what stays placed or unmapped.
 - **Neighbours.** When a part of the area talks to another area, show that area on the area diagram as one node with no source, named exactly as its node on the Architecture diagram, and put the detail in the link's label. A source there would make the other area look mapped.
+
+### Group every canvas with boundaries
+
+A flat canvas of fifteen nodes leaves the reader to work out its structure. Plan boundaries with the nodes, not after them.
+
+- **What a boundary says.** Its members share something a reader needs to see: where they run (the user's machine, a server, a third party), who owns or operates them, a layer or a stage in a flow, a trust or network edge, or that they lie outside this repository.
+- **Boundary or subcanvas.** A boundary answers "what do these have in common". A subcanvas answers "what is inside this one". Peers get a boundary on the same canvas, which costs no extra approval. A part with inner workings of its own gets a subcanvas.
+- **Name it for what the members share**, such as `Runs in the browser`, `Deployed by docker-compose.yml`, `Request handling` or `External`. Not `Group 1`, `Misc` or the canvas's own title.
+- **How many.** A canvas of about six nodes or fewer needs none. Above that, two to five, covering most of the nodes. Leftover nodes stay outside. No boundary around a single node, unless it marks an edge, such as `External`. Boundaries can nest: use one level of nesting at most, for a real second level such as a network inside a cloud account.
+- **Back it with something real**: a folder, a manifest, a deploy unit, a network edge. Write that evidence as one line in the boundary's `details`. When the grouping is your reading and nothing in the repository or its deployment shows it, end the name with `(inferred)`.
+- **Pick one question per canvas.** Boundaries that mix where things run with what layer they are in read as noise.
+
+Groupings that often fit, as examples, not a template:
+
+- **Architecture**: areas grouped by where they run or how they ship; `Shared libraries`; `External` for systems the repository calls and does not contain.
+- **An area diagram**: the area's own parts grouped by layer or stage, or left ungrouped when they are few; `Other areas` for neighbours; `External`.
+- **A subcanvas**: layers, such as request handling, domain logic and storage, or the stages of a flow, in order.
+
+Links still join nodes. Link to a boundary only when one part truly talks to every member alike.
 
 ### Large sections
 
@@ -60,40 +79,50 @@ parts: up to 20. For each: name, source (repo-relative path that `git ls-files` 
   and deeper: yes only if it has several internal parts whose relationships matter.
 links: from -> to, what flows, and the file that shows it. Write "inferred" in place of
   the file when you did not see it in code.
+groups: two to five sets of parts that share a layer, a stage or where they run, each with
+  the folder or file that shows it. None when the parts do not group.
 in_out: what this folder calls outside itself, and what calls it, each with its evidence file.
 questions: anything you could not settle from the code.
 ```
 
-Compose the canvas above from the summaries: each folder becomes one node, and its `in_out` lines become the links between nodes.
+Compose the canvas above from the summaries: each folder becomes one node, and its `in_out` lines become the links between nodes. Its `groups` become the boundaries of that folder's own canvas.
 
 ## 3. Show the mapping plan in the conversation
 
-Before touching Lycana, give the user the plan as an indented outline and wait for their answer. Naming and granularity are cheap to fix here and slow to fix through proposals.
+Before touching Lycana, give the user the plan as an indented outline and wait for their answer. Show each boundary in square brackets, with its evidence and its members indented beneath, so the person approves the grouping too. Naming, grouping and granularity are cheap to fix here and slow to fix through proposals.
 
 ```
 Mapping plan at commit 4f2a9c1 (section: services/api)
 
 Architecture
-  API               services/api      HTTP API for web and partners        -> area diagram "API"
+  [Deployed by docker-compose.yml]
+    API             services/api      HTTP API for web and partners        -> area diagram "API"
+    Worker          services/worker   Background jobs (from manifest)      placed
+    Postgres        (external)        Main database
   Web app           apps/web          Customer site (from README)          placed
-  Worker            services/worker   Background jobs (from manifest)      placed
-  Shared libraries  packages          ui, config (from manifests)          placed, no links
-  Postgres          (external)        Main database
-  Stripe            (external)        Card payments
+  [Shared libraries]                  packages/, imported only, no links
+    UI              packages/ui       Components (from manifest)           placed
+    Config          packages/config   Settings loader (from manifest)      placed
+  [External]                          called over the network
+    Stripe          (external)        Card payments
   links: Web app -> API "REST calls"; API -> Postgres "reads and writes";
          API -> Worker "queues jobs"; API -> Stripe "charges cards (inferred)"
 
 API (area diagram)
-  Routes          services/api/src/routes     Request handlers
-  Billing         services/api/src/billing    Invoices and charges     -> subcanvas
-    Invoices      services/api/src/billing/invoices   Builds and stores invoices
-    Stripe client services/api/src/billing/stripe.ts  Wraps the Stripe API
-  Auth            services/api/src/auth       Sessions and API keys
-  Web app         (neighbour, no source)
+  [Request handling]                  services/api/src/http
+    Routes        services/api/src/http/routes   Request handlers
+    Auth          services/api/src/http/auth     Sessions and API keys
+  [Domain (inferred)]
+    Billing       services/api/src/billing       Invoices and charges     -> subcanvas (2 nodes, no boundary)
+      Invoices      services/api/src/billing/invoices   Builds and stores invoices
+      Stripe client services/api/src/billing/stripe.ts  Wraps the Stripe API
+    Accounts      services/api/src/accounts      Customers and plans
+  [Other areas]
+    Web app       (neighbour, no source)
   ...
 
 Left out: scripts/, docs/ (no runtime part).
-Placed, not mapped: apps/web, services/worker, packages.
+Placed, not mapped: apps/web, services/worker, packages/ui, packages/config.
 Creates now, without a proposal: empty diagrams "Architecture", "API".
 Approvals: 2 proposals at once, then 1 more for the Billing subcanvas.
 ```
@@ -111,13 +140,13 @@ Done when the user has agreed to the outline, with their corrections applied.
 Write each operations file and send it as [propose.md](propose.md) says, always with `--review`, also when the connection has Full access. Lycana places new objects itself: leave out positions, and use `near` only to put a new node beside an existing neighbour. Do not send `move` or `resize`.
 
 1. **Create the missing diagrams.** From the repository root, `lycana create "<name>" --json` for Architecture and for the area diagram of each area being mapped, named exactly as its area node. Create none for placed areas. Keep each `diagramId`. A linked repository puts them in its project. A new diagram is empty at version 0, so its first file needs no `lycana get`: use `"expectedVersion": 0`.
-2. **Send the top canvas of every diagram**, one proposal per diagram. These can all wait at the same time. Each file holds the canvas's nodes and links, a `create_subcanvas` for every node that gets one, and the map stamp. On Architecture, the node of each area being mapped also gets a `link_diagram` to its `diagramId` from step 1; placed nodes get nothing beneath them. Put `create_subcanvas` in the same file as its node: an edit that only adds empty subcanvases applies at once, and inside a proposal it waits with the rest.
+2. **Send the top canvas of every diagram**, one proposal per diagram. These can all wait at the same time. Each file holds the canvas's boundaries, then its nodes and links, a `create_subcanvas` for every node that gets one, and the map stamp. On Architecture, the node of each area being mapped also gets a `link_diagram` to its `diagramId` from step 1; placed nodes get nothing beneath them. Put `create_subcanvas` in the same file as its node: an edit that only adds empty subcanvases applies at once, and inside a proposal it waits with the rest.
 3. **Tell the user what waits**: each proposal id with the link of the canvas that holds it, and what comes next in each diagram. Prepare the next files meanwhile. Do not send them.
 4. **When a top canvas is accepted** (`lycana proposal <id> --no-wait --json` exits 0), read `created`: each node and `create_subcanvas` `tempId` maps to its id or canvas id. Send the first subcanvas of that diagram with `--canvas <canvas id>` and `"expectedVersion": 0`.
 5. **One subcanvas at a time per diagram.** Send the next only after the last is accepted. Finish a level before going deeper: a deeper subcanvas gets its canvas id from the proposal that fills the canvas above it. Different diagrams move independently.
 6. **If a proposal is rejected**, stop on that diagram and ask the user what was wrong. Canvases below it cannot be sent. An empty diagram from step 1 stays until the person deletes it in Lycana; tell them.
 
-A canvas that needs more than 50 operations: send its nodes, subcanvases and map stamp first, and its links in a second proposal once the first is accepted, using the real ids from `created`.
+A canvas that needs more than 50 operations: send its boundaries, nodes, subcanvases and map stamp first, and its links in a second proposal once the first is accepted, using the real ids from `created`.
 
 ### Operations this needs
 
@@ -129,7 +158,7 @@ Architecture, an area node that opens its area diagram:
 {"op": "link_diagram", "node": "api", "diagram": "<diagramId of the API diagram>"}
 ```
 
-An area diagram's top canvas, with a node that gets a subcanvas, an external system and the map stamp. A neighbour is written like the external system, with a `name` and no `source`:
+An area diagram's top canvas, with a boundary, a node that gets a subcanvas, an external system and the map stamp. A neighbour is written like the external system, with a `name` and no `source`. Create a boundary before the first operation that names it. Lycana sizes it to wrap its members:
 
 ```json
 {
@@ -138,7 +167,9 @@ An area diagram's top canvas, with a node that gets a subcanvas, an external sys
     {"op": "upsert_node", "tempId": "billing", "source": "services/api/src/billing",
      "name": "Billing", "description": "Invoices and charges", "preset": "architecture.service"},
     {"op": "create_subcanvas", "node": "billing", "tempId": "billingCanvas"},
-    {"op": "create_node", "tempId": "stripe", "name": "Stripe",
+    {"op": "create_boundary", "tempId": "external", "name": "External", "preset": "group.boundary",
+     "details": "Called over the network. Not in this repository."},
+    {"op": "create_node", "tempId": "stripe", "name": "Stripe", "boundary": "external",
      "preset": "architecture.external_system"},
     {"op": "upsert_link", "from": "billing", "to": "stripe", "label": "charges cards (inferred)"},
     {"op": "create_note", "text": "Mapped at commit 4f2a9c1, 2026-03-14"}
@@ -171,11 +202,15 @@ When the section is already mapped, read it first, then change only what the cod
 lycana outline <diagram id> --depth 10 --json    # every canvas, node, source and canvas id
 ```
 
+An outline leaves out boundaries: `lycana get` shows a canvas's `boundaries`, and each node's `boundary`, the id of the one it sits in or `null`.
+
 - **Upsert, keyed on source.** The same source on the same canvas updates the node in place. Fields you leave out stay as they are, so leave out `description` where the person's wording still fits, and send the existing `name`, which `upsert_node` requires.
 - **A node whose code moved**: `{"op": "update_node", "id": "<node id>", "source": "<new path>"}`. This keeps its place, its links and its subcanvas. Deleting and adding again loses them.
 - **External systems and neighbours** have no source: look each up by name before `create_node`, as step 3 of [propose.md](propose.md) says.
 - **A placed area that is now being mapped**: create its area diagram, and in the Architecture proposal give the existing area node, by its id, a `link_diagram` and a description from the code you read.
-- **Keep the person's layout.** `near` only places new nodes; existing ones stay where they are.
+- **Keep the person's layout.** `near` only places new nodes; existing ones stay where they are, unless a boundary gathers them.
+- **Adding boundaries to a flat canvas.** Plan the grouping in the conversation as in step 3, then send one proposal per canvas, top canvas first: each `create_boundary`, then one `put_in_boundary` per existing node, as [propose.md](propose.md) shows. Lycana moves the members together inside the new boundary and pushes other nodes clear of it, so tell the user the canvas will be rearranged, and leave the person's own boundaries as they are.
+- **Regrouping.** `put_in_boundary` moves a node to another boundary, or out of all with `"boundary": null`. `update_boundary` renames one. Deleting a boundary keeps its members: they move up to the canvas, or to the boundary around it, and only links attached to the boundary itself go. Tell the user so: "removes the boundary `Workers`; its three nodes stay".
 - **Removals.** Propose a `delete` only for a node whose source is gone from the repository. List every removal for the user by name in the conversation and in your report, and never clear a canvas to rebuild it.
 - **A new subcanvas on an existing node**: put `create_subcanvas` in the same file as another change to that canvas, so it waits as a proposal.
 
@@ -183,11 +218,11 @@ lycana outline <diagram id> --depth 10 --json    # every canvas, node, source an
 
 Report when you stop, also when proposals are still waiting. Give the user:
 
-- what was mapped: diagrams, canvases, and the count of nodes and links. `outline` holds no links: count them from the files you sent or from `lycana get` on each canvas;
+- what was mapped: diagrams, canvases, and the count of nodes, links and boundaries. `outline` holds nodes only: count the rest from the files you sent or from `lycana get` on each canvas;
 - what waits for approval: each proposal id with its diagram, canvas and link, and which canvases come after it;
 - what was created at once without a proposal, such as empty diagrams;
 - what was left out and why, including areas still placed, paths still unmapped and any stamp not moved;
-- what was inferred, or taken from a manifest or README, and not read from code;
-- any removals proposed, by name.
+- what was inferred, boundaries included, or taken from a manifest or README, and not read from code;
+- any removals or regroupings proposed, by name.
 
 Say a proposal was accepted only after `lycana proposal <id>` confirms it.

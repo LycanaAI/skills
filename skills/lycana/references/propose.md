@@ -66,6 +66,16 @@ This file adds a node for `services/billing` and a link to it from a node alread
 - Prefer `upsert_node` and `upsert_link` over `create_node` and `create_link`. An upsert updates the node on this canvas that already has that source, or the link already between those two objects, so proposing the same thing twice makes no duplicates.
 - A node with no source cannot be upserted, because `upsert_node` requires `source`. That covers external systems, such as a database or a third-party service, and neighbours. Look for it by name in the `nodes` from step 2. If it is there, use its `id`. If not, add it with `{"op": "create_node", "tempId": "stripe", "name": "Stripe", "preset": "architecture.external_system"}`, or with a `service` such as `postgresql.postgresql`. `create_node` makes a new node every time, so never send it without that lookup. Confirm an external system from the code that calls it.
 - To change a node that exists, send `{"op": "update_node", "id": "<node id>", "description": "..."}`. Fields you leave out stay as they are. Use it for a description, a name, or a `source` that moved.
+- A boundary groups nodes on one canvas. It has a `name`, `details` and a `preset`, and no source, so it cannot be upserted: look it up by name in the `boundaries` from step 2, and send `create_boundary` only when it is missing. Create it before any operation that names it. A new node, or an upserted one, takes `"boundary"`; any other existing node needs `put_in_boundary`, because `update_node` has no such field:
+
+  ```json
+  {"op": "create_boundary", "tempId": "workers", "name": "Background workers", "preset": "group.boundary",
+   "details": "Started by the worker service in docker-compose.yml"},
+  {"op": "upsert_node", "source": "services/mailer", "name": "Mailer", "boundary": "workers"},
+  {"op": "put_in_boundary", "id": "<existing node id>", "boundary": "workers"}
+  ```
+
+  Lycana sizes a boundary to wrap its members and arranges them inside it, so never `move` or `resize` one. Deleting a boundary keeps its members, which move up a level. When to draw one is in [map.md](map.md#group-every-canvas-with-boundaries).
 - A link joins two objects on the same canvas. To show a connection between canvases, link the nodes that hold them, one level up.
 - Removing an object is the `delete` operation. Removing a node also removes its links. If the node has a subcanvas, read it first and list in step 4 what goes with the node.
 - To give a new node a subcanvas, add `{"op": "create_subcanvas", "node": "<tempId or id>", "tempId": "<your name>"}` to the same file. The canvas id arrives once the proposal is accepted (step 5); fill the subcanvas after that, with `--canvas`.
@@ -97,7 +107,7 @@ If the network fails mid-send, the message gives a `--request-id`. Retry with th
 
 Then tell the user, in a few lines:
 
-- what you proposed, as a plain list of nodes and links added, changed and removed;
+- what you proposed, as a plain list of nodes, links and boundaries added, changed and removed, and which nodes change boundary;
 - which parts are inferred and not read from code;
 - which diagram and canvas, with the link to the canvas that holds the proposal. `lycana get <diagram id> [--canvas <canvas id>]` without `--json` prints that canvas's link on its last line. For a subcanvas, pass `--canvas`: the link then ends in the canvas id and opens the subcanvas, where Accept and Reject are. The diagram's own link opens the top canvas, a step away from the proposal;
 - that it waits for Accept or Reject in Lycana, and the proposal id.

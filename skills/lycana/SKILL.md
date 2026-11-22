@@ -38,6 +38,7 @@ This skill's words:
 - One Lycana project per repository. Every diagram for the repository is in it.
 - The Architecture diagram has one node per area. A mapped area's node opens its area diagram as a linked diagram. An area node with no linked diagram and no subcanvas is placed only.
 - Detail below an area lives in subcanvases of the area diagram.
+- On any canvas, boundaries group nodes that share something, such as where they run, a layer, or being outside the repository. A boundary carries no source, so it never changes a path's state.
 - A node that stands for another area inside an area diagram (a neighbour) carries no source and has exactly the name of that area's node on the Architecture diagram. So every source in an area's detail lies inside that area.
 - Every node that describes code carries its source. Write a source with forward slashes and no leading `./` or trailing slash, such as `services/billing`. Use the same spelling every time, because nodes are found again by their source.
 - Each diagram has one map stamp on its top canvas: a note whose text is `Mapped at commit <short sha>, <YYYY-MM-DD>`. Lycana stores no commit, so this note is the only way to tell a map's age. It moves only at a mapping, or at a diff check under step 6 of [check.md](references/check.md).
@@ -80,7 +81,7 @@ Read every source once, then match locally:
 lycana outline <diagram id> --depth 10 --json    # once for each diagram of the project
 ```
 
-The output nests canvases under `outline`: a canvas has `canvasId` (`null` for the top canvas), `version` and `nodes`; a node has `id`, `name` and, when present, `source`, `subcanvas` (a canvas) and `linkedDiagram`. It does not follow linked diagrams, so read every diagram. A subcanvas that says `"truncated": true` was not read: read it with `--canvas <canvasId>`. An outline holds nodes only. Links, descriptions and notes come from `lycana get`, one canvas at a time.
+The output nests canvases under `outline`: a canvas has `canvasId` (`null` for the top canvas), `version` and `nodes`; a node has `id`, `name` and, when present, `source`, `subcanvas` (a canvas) and `linkedDiagram`. It does not follow linked diagrams, so read every diagram. A subcanvas that says `"truncated": true` was not read: read it with `--canvas <canvasId>`. An outline holds nodes only. Links, boundaries, descriptions and notes come from `lycana get`, one canvas at a time.
 
 For each path:
 
@@ -128,7 +129,7 @@ The subagent knows nothing about this conversation. Its brief must hold:
 
 - **Send every diagram change as a proposal**, with `lycana edit --review`, even when the connection has Full access. The person, not the agent, decides what the architecture is. `lycana edit --help` calls `--review` "not for routine additions"; under this skill no change to the architecture is routine.
 - **Name only what exists.** Before a node goes into a proposal, confirm its source is in the repository with `git ls-files <path>` or the file system. An external system has no source: confirm it from the code that calls it.
-- **Mark inference.** When a node or link comes from a guess and not from code you read, say so in the proposal and in your report. Do not describe a part you have not read: a placed node gets one line taken from its manifest or README, ending `(from manifest)` or `(from README)`.
+- **Mark inference.** When a node, link or boundary comes from a guess and not from code you read, say so in the proposal and in your report. Do not describe a part you have not read: a placed node gets one line taken from its manifest or README, ending `(from manifest)` or `(from README)`.
 - **Keep approvals few.** Each proposal costs the person a review. Group changes, and prefer a shallower map that needs fewer rounds.
 - **Report only what Lycana confirms.** Call a proposal accepted only after `lycana proposal <id>` says so.
 - **Read `lycana --help` for anything not written here.** `lycana <command> --help` and `lycana help operations` are the current reference for options, operations and exit codes.

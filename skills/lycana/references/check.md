@@ -44,12 +44,13 @@ Read canvases, not whole diagrams, and only those that hold a touched node. One 
 lycana get <diagram id> [--canvas <canvas id>] --json | jq -c '{version, path: .canvas.path,
   nodes: [.nodes[] | {id, name, source, description, details, boundary}],
   links: [.links[] | {id, label, from: .from.id, to: .to.id}],
-  boundaries: [.boundaries[] | {id, name}], notes: [.notes[] | {id, text}]}'
+  boundaries: [.boundaries[] | {id, name, details}], notes: [.notes[] | {id, text}]}'
 ```
 
 That keeps about a quarter. Without `jq`, write the output to a file outside the repository and read only those fields.
 
-- From each canvas take the touched node's `description` and `details`, every link that starts or ends at the node, with its label and direction, the boundary the node sits in, and the node at the other end of each link.
+- From each canvas take the touched node's `description` and `details`, every link that starts or ends at the node, with its label and direction, and the node at the other end of each link.
+- Read the boundaries as evidence. A node's `boundary` is the id of the one it sits in, or `null`. Note which boundary each touched node and each link's other end sits in, and which links cross from one boundary to another.
 - Go one level up for context. `path` names the node that holds this canvas; read that node and its links on the canvas above. For an area diagram's top canvas, the level above is the area's node on the Architecture diagram.
 - To see what else is mapped near the touched paths, such as sibling folders, run `lycana outline <diagram id> --json`. It holds nodes only.
 - A placed path has one thing to read: its area node on the Architecture diagram's top canvas, with that node's links. Nothing lies beneath it.
@@ -80,7 +81,7 @@ Answer each question for the touched nodes. Each "no" or "yes, and the diagram l
 - **Place**: does the work put code where the diagram says that responsibility lives? Compare each new file's folder with the node whose `description` claims the job.
 - **New parts**: does the work add a service, module, data store or external service that no node describes?
 - **Communication**: does the work add or change how parts talk: a new link, a reversed direction, a different protocol or label?
-- **Boundaries**: does the work reach across a boundary the diagram draws, or around a node the diagram routes through, such as a client calling a data store directly when the diagram puts a service between them?
+- **Boundaries**: does the work move a responsibility from one boundary to another, or add communication between two boundaries that no link crossed before? Does it go around a node the diagram routes through, such as a client calling a data store directly when the diagram puts a service between them? Give the boundary's name as the diagram side.
 - **Removed or renamed**: does the work delete, move or rename a mapped folder or file?
 - **Sources**: does each touched node's source still exist? `git ls-files <source>` printing nothing means it is gone.
 
@@ -95,7 +96,7 @@ Anything else with one side is not a finding. Leave it out, or put the question 
 
 The remedy depends on the cause:
 
-- **Departs**: the diagram records a decision and the work goes against it. Signs: the node's `description` or a boundary states the rule, or the work goes around the only link the diagram draws between two parts; and no uncompared commit from step 3 touched that code. Remedy: the user decides, either change the work or change the architecture on purpose.
+- **Departs**: the diagram records a decision and the work goes against it. Signs: the node's `description` or a boundary's name or `details` states the rule, or the work goes around the only link the diagram draws between two parts; and no uncompared commit from step 3 touched that code. Remedy: the user decides, either change the work or change the architecture on purpose.
 - **Out of date**: the work is sound and the diagram simply has not caught up. Signs: the work extends what is drawn without contradicting it, or an uncompared commit from step 3 already moved the code. Remedy: a diagram update.
 - **Code only**: the diagram is silent and the code is not. Remedy: tell the user what exists, because it may change the plan. When that code lies in a mapped part, also list the missing node or link under `Diagram changes`, which step 6 may propose.
 - **Cannot tell from the map**: remedy: offer to add the missing node, as a diagram change once code confirms it.
@@ -111,7 +112,7 @@ At the plan check, list the changes under `Diagram changes` in the verdict and s
 At the diff check:
 
 1. Take the diagram changes whose code side is marked `read`. Leave departs findings alone until the user chooses to change the architecture. Do not add detail for a placed or unmapped area this way: that is a mapping.
-2. Sort them. A **structural** change alters what the diagram says about parts or communication: a node added or removed, a link added or changed, a responsibility or a source moved. A **wording** change only makes a description fuller. Spend an approval on structural changes only. Add a wording change to a proposal that is going to its canvas anyway; otherwise list it under `Diagram changes` as `wording, not sent`.
+2. Sort them. A **structural** change alters what the diagram says about parts or communication: a node added or removed, a link added or changed, a responsibility or a source moved, a node put in another boundary. Give a new node the boundary its siblings sit in. A **wording** change only makes a description fuller. Spend an approval on structural changes only. Add a wording change to a proposal that is going to its canvas anyway; otherwise list it under `Diagram changes` as `wording, not sent`.
 3. Group the changes by diagram, then by canvas.
 4. For each diagram, check any proposal already sent to it with `lycana proposal <proposal id> --no-wait --json`. Exit 6 means it still waits: send nothing to that diagram, and list your changes in the verdict as not sent.
 5. Send one proposal per diagram, following [propose.md](propose.md). A new proposal anywhere in a diagram replaces the one waiting there, so two to one diagram would lose the first.
@@ -128,7 +129,7 @@ Read: <diagram title> / <canvas>, ...
 Stamps: <diagram title> <sha>, <date>: <current | <n> commits not compared | moved to <sha> in the proposal | can move to <sha>>; ...
 Findings:
 1. <departs | out of date | code only | cannot tell from the map | placed | unmapped>: <what differs, or what was not checked, one sentence>.
-   Diagram: <"<node or link name>" and what it says | none>. Work: <file path, with the line for code only> (<read | plan | inferred>).
+   Diagram: <"<node, link or boundary name>" and what it says | none>. Work: <file path, with the line for code only> (<read | plan | inferred>).
 2. ...
 Diagram changes: <nodes and links to add, change or remove | wording, not sent: ... | none>
 Proposals: <proposal id and the link of the canvas that holds it | not sent: <why> | none at a plan check>
