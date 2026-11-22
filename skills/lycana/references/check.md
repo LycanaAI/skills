@@ -95,7 +95,7 @@ Anything else with one side is not a finding. Leave it out, or put the question 
 
 The remedy depends on the cause:
 
-- **Departs**: the diagram records a decision and the work goes against it. Signs: the node's `description` or a boundary states the rule, and no uncompared commit from step 3 touched that code. Remedy: the user decides, either change the work or change the architecture on purpose.
+- **Departs**: the diagram records a decision and the work goes against it. Signs: the node's `description` or a boundary states the rule, or the work goes around the only link the diagram draws between two parts; and no uncompared commit from step 3 touched that code. Remedy: the user decides, either change the work or change the architecture on purpose.
 - **Out of date**: the work is sound and the diagram simply has not caught up. Signs: the work extends what is drawn without contradicting it, or an uncompared commit from step 3 already moved the code. Remedy: a diagram update.
 - **Code only**: the diagram is silent and the code is not. Remedy: tell the user what exists, because it may change the plan. When that code lies in a mapped part, also list the missing node or link under `Diagram changes`, which step 6 may propose.
 - **Cannot tell from the map**: remedy: offer to add the missing node, as a diagram change once code confirms it.

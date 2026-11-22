@@ -84,7 +84,7 @@ The output nests canvases under `outline`: a canvas has `canvasId` (`null` for t
 
 For each path:
 
-1. Collect the nodes whose source equals the path, or is a folder above it: the path starts with the source followed by `/`. Compare exactly and on whole segments, so `src/commands` does not cover `src/commands.ts`. The one with the longest source is the covering node.
+1. Collect the nodes whose source equals the path, or is a folder above it: the path starts with the source followed by `/`. Compare exactly and on whole segments, so `src/commands` does not cover `src/commands.ts`. Leave out a node on an area diagram whose source lies outside that area: it is a neighbour that should carry no source, so it says nothing about its own area. Report it to the user as a map defect. Of the rest, the one with the longest source is the covering node.
 2. No such node: the path is **unmapped**.
 3. The covering node is on the top canvas of the Architecture diagram and has neither a `linkedDiagram` nor a `subcanvas` with nodes in it: the path is **placed**.
 4. Anything else: the path is **mapped**.
