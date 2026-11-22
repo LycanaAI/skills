@@ -19,7 +19,7 @@ No command lists waiting proposals, so keep every proposal id you are given.
 
 ### 1. Confirm the change is real
 
-For each node you will add or point at code, confirm its source exists: `git ls-files <path>` prints something, or the folder is on disk. Drop any node that fails. Note which parts of the change you inferred and did not read from code; step 4 needs that list.
+For each node you will add or point at code, confirm its source exists: `git ls-files <path>` prints something, or the folder is on disk. Drop any node that fails. Note which nodes, links and descriptions you inferred and did not read from code; step 4 needs that list.
 
 ### 2. Read the canvas
 
@@ -27,7 +27,9 @@ For each node you will add or point at code, confirm its source exists: `git ls-
 lycana get <diagram id> [--canvas <canvas id>] --json
 ```
 
-Keep `version` and the `id` of every object you will link to, change or place a node beside. Each canvas has its own version. Check that what you intend to add is not already there under another name or source.
+Keep `version` and the `id` of every object you will link to, change or place a node beside. Each canvas has its own version. Check that what you intend to add is not already there under another name or source. Reuse a read made earlier in the same task, and keep it small with the `jq` filter in step 2 of [check.md](check.md).
+
+Skip this read for a canvas you know is new and empty: a diagram you made with `lycana create` in this session, whose output gives its `version`, 0, or a subcanvas from a `create_subcanvas` just accepted, which also starts at version 0. Use `"expectedVersion": 0`. If someone has drawn there since, the edit conflicts (exit 4) and you read the canvas then.
 
 ### 3. Write the operations file
 
@@ -62,8 +64,10 @@ This file adds a node for `services/billing` and a link to it from a node alread
 - `expectedVersion` is the `version` from step 2. With it, Lycana refuses the edit if an object you touch changed after you read it, so you never overwrite the person's newer work.
 - `tempId` is your own name for a new object. Later operations in the same file use it as an id, as the link's `to` does here. The answer maps each `tempId` to the real id.
 - Prefer `upsert_node` and `upsert_link` over `create_node` and `create_link`. An upsert updates the node on this canvas that already has that source, or the link already between those two objects, so proposing the same thing twice makes no duplicates.
+- A node with no source cannot be upserted, because `upsert_node` requires `source`. That covers external systems, such as a database or a third-party service, and neighbours. Look for it by name in the `nodes` from step 2. If it is there, use its `id`. If not, add it with `{"op": "create_node", "tempId": "stripe", "name": "Stripe", "preset": "architecture.external_system"}`, or with a `service` such as `postgresql.postgresql`. `create_node` makes a new node every time, so never send it without that lookup. Confirm an external system from the code that calls it.
+- To change a node that exists, send `{"op": "update_node", "id": "<node id>", "description": "..."}`. Fields you leave out stay as they are. Use it for a description, a name, or a `source` that moved.
 - A link joins two objects on the same canvas. To show a connection between canvases, link the nodes that hold them, one level up.
-- Removing an object is the `delete` operation. Removing a node also removes its links. If the node has a subcanvas, read it first and list what it holds, so the person knows what goes with the node. Say all of this plainly in step 4.
+- Removing an object is the `delete` operation. Removing a node also removes its links. If the node has a subcanvas, read it first and list in step 4 what goes with the node.
 - To give a new node a subcanvas, add `{"op": "create_subcanvas", "node": "<tempId or id>", "tempId": "<your name>"}` to the same file. The canvas id arrives once the proposal is accepted (step 5); fill the subcanvas after that, with `--canvas`.
 
 Save the file outside the repository, or pipe it on standard input with `-` in place of the file name, so it is never committed.
@@ -87,7 +91,7 @@ What the exit code means:
 | 5 | Rejected, or it could no longer apply. | See "After the answer". |
 | 7 | Locked: another agent's waiting proposal holds objects this edit changes. | Do not retry. Tell the user what is waiting. |
 | 8 | Too many changes too quickly. | Wait as long as the message says, then send once more. |
-| 1 | Refused. With `--json` the error on standard error has a `code`, `message` and `hint`. | Tell the user what it says. `upgrade_required` means the account's plan does not let this diagram change. A teammate editing the diagram is named in the message. |
+| 1 | Refused. With `--json` the error on standard error has a `code`, `message` and `hint`. | Tell the user what it says. `upgrade_required` is the Free plan limit, described in [setup.md](setup.md#the-free-plan-limit). A teammate editing the diagram is named in the message. |
 
 If the network fails mid-send, the message gives a `--request-id`. Retry with that option and the edit is made at most once.
 
@@ -95,10 +99,10 @@ Then tell the user, in a few lines:
 
 - what you proposed, as a plain list of nodes and links added, changed and removed;
 - which parts are inferred and not read from code;
-- which diagram and canvas, with its link (`lycana get <diagram id> [--canvas <canvas id>]` without `--json` prints the link on its last line);
+- which diagram and canvas, with the link to the canvas that holds the proposal. `lycana get <diagram id> [--canvas <canvas id>]` without `--json` prints that canvas's link on its last line. For a subcanvas, pass `--canvas`: the link then ends in the canvas id and opens the subcanvas, where Accept and Reject are. The diagram's own link opens the top canvas, a step away from the proposal;
 - that it waits for Accept or Reject in Lycana, and the proposal id.
 
-Do not wait for the answer. Carry on with work that does not depend on it. While the proposal waits, no other agent can edit, link or remove the objects it touches. A second proposal from you to the same diagram does not fail: it replaces the waiting one, which is why you check before sending.
+Do not wait for the answer. Carry on with work that does not depend on it. While the proposal waits, no other agent can edit, link or remove the objects it touches.
 
 ### 5. Check the answer
 
@@ -108,13 +112,13 @@ lycana proposal <proposal id> --no-wait --json
 
 Check when the user says they answered, before you report the outcome, and before you propose to the same diagram again. Never report a proposal as accepted from anything but this command.
 
-- Exit 0: accepted. The output has the new `version` and `created`, mapping each `tempId` to its real id (for `create_subcanvas`, to the canvas id).
+- Exit 0: accepted. The output has the new `version` and `created`, mapping the `tempId` of each new node to its real id and of each `create_subcanvas` to the canvas id. Do not expect the tempIds of links and notes there: read the canvas with `lycana get` when you need their ids.
 - Exit 6: still waiting.
 - Exit 5: not applied. `reason` says why.
 
 ## After the answer
 
-- **Accepted**: keep the real ids from `created`. If more depends on them, such as filling a new subcanvas, start again at step 2 on that canvas. Leave the map stamp as it is: one accepted change does not make the whole diagram current, and only a mapping ([map.md](map.md)) moves the stamp.
+- **Accepted**: keep the real ids from `created`. If more depends on them, such as filling a new subcanvas, start again at step 2 on that canvas. Acceptance does not move the map stamp: one accepted change does not make the whole diagram current. The stamp moves only when a proposal carries an `update_note` for it, which a mapping ([map.md](map.md)) and a diff check (step 6 of [check.md](check.md)) add under their own rules.
 - **Rejected** (`reason: rejected`): the diagram is unchanged. Do not send the same change again. Ask the user what was wrong, and treat their answer as the correction to the map or to the code.
 - **Conflict** (`reason: conflict`): the canvas changed while the proposal waited. Go back to step 2 and propose again from the new version.
 - **Replaced** (`reason: replaced`): your newer proposal on that diagram took its place. Follow the newer one.
@@ -124,6 +128,6 @@ Check when the user says they answered, before you report the outcome, and befor
 
 Three things apply at once, with or without `--review`. Ask the user in the conversation before doing any of them.
 
-- `lycana create <name>` creates an empty diagram immediately. Edits to a diagram this connection created also apply at once unless sent with `--review`, which is one more reason to always pass it.
+- `lycana create <name>` creates an empty diagram immediately, and it counts toward the Free plan limit. Edits to a diagram this connection created also apply at once unless sent with `--review`, which is one more reason to always pass it.
 - An edit that only gives nodes empty subcanvases applies immediately. Put `create_subcanvas` in the same file as a visible change and it waits with the rest.
 - `lycana rename` on a diagram applies immediately and the person cannot undo it. This skill does not rename diagrams.

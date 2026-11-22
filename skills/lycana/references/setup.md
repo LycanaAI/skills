@@ -2,7 +2,7 @@
 
 Follow this when the preflight in [SKILL.md](../SKILL.md) fails. Start at the first step that is not yet done, then return to the preflight.
 
-Setup needs the person several times: to approve the sign-in, to choose the project, and to agree to what gets committed. Ask each time and wait for the answer. These are their account and their repository.
+Setup needs the person several times: to approve the sign-in, to choose the project, and to agree to what gets committed. Ask each time and wait for the answer.
 
 ## 1. Install the tool
 
@@ -56,9 +56,9 @@ lycana projects --json    # the projects in them
 
 Show the user the organizations and projects and ask which one is this repository's. Do not guess from names: a diagram proposed into the wrong project lands in front of the wrong people.
 
-If there is no project for this repository yet, ask the user to create one in Lycana, named after the repository. The tool lists projects but cannot create them. Run `lycana projects --json` again once they say it is done.
+If there is no project for this repository yet, ask the user to create one, named after the repository: in Lycana's dashboard, the Projects list in the sidebar has a "New project" control. The tool lists projects but cannot create them. Run `lycana projects --json` again once they say it is done.
 
-A free Lycana account has a limit of three saved canvases, so an Architecture diagram with several area diagrams may not fit. Tell the user this before mapping, not after a command fails with code `upgrade_required`. [map.md](map.md) says how to map within the limit.
+Tell the user about [the Free plan limit](#the-free-plan-limit) now if the organization may be on Free, not after a command fails.
 
 Done when you hold one organization id and one project id that the user confirmed.
 
@@ -72,7 +72,7 @@ lycana link --org <org id> --project <project id>
 
 Pass both options. Without `--org` the command asks a question, which fails when no person is at the terminal.
 
-The command writes `.lycana/config.json` and adds `.lycana` to `.gitignore`. From then on, commands run anywhere in the repository use that organization and project, so `lycana diagrams` lists only this repository's diagrams.
+The command writes `.lycana/config.json` and adds a `.lycana` line to the repository's `.gitignore`, creating that file if there is none. Tell the user: this is a change to a tracked file that they did not ask for by name. From then on, commands run anywhere in the repository use that organization and project, so `lycana diagrams` lists only this repository's diagrams.
 
 Done when `lycana auth status --json` shows `linkedDirectory` as the repository root and a `project` that is not `null`.
 
@@ -80,12 +80,12 @@ Done when `lycana auth status --json` shows `linkedDirectory` as the repository 
 
 `.lycana/config.json` holds the address of the Lycana API and the ids and names of the organization and project. It holds no secret: the sign-in key is kept in the system credential store, outside the repository. Read the file and confirm that before you tell the user it is safe.
 
-The tool ignores the folder by default, so each clone and each git worktree has to be linked again. Committing the file removes that step for teammates and their agents. Ask the user which they want:
+The folder is now ignored, so each clone and each git worktree has to be linked again. Committing the file removes that step for teammates and their agents. Ask the user which they want:
 
-- **Keep it ignored** (the default): nothing to do. Tell the user the two ids, so they can link another checkout with the command from step 4.
-- **Share it**: stage the file with `git add -f .lycana/config.json`. The `-f` is needed because the folder is ignored; once tracked, the file stays tracked. Leave the commit to the user unless they ask you to make it. In a public repository, mention that the organization's and project's names become public with it.
+- **Keep it ignored**: the `.gitignore` change from step 4 is still uncommitted. Ask whether to commit it or leave it to them. Tell the user the two ids, so they can link another checkout with the command from step 4.
+- **Share it**: stage the file with `git add -f .lycana/config.json`. The `-f` is needed because the folder is ignored; once tracked, the file stays tracked. In a public repository, mention that the organization's and project's names become public with it.
 
-Commit nothing else the tool creates.
+If this skill was installed into the repository, the installer left the skill's folder and possibly a `skills-lock.json` file there. Name them too. Whether any of these files is committed is the user's decision; make a commit only when they ask.
 
 ## 6. Look for the Architecture diagram
 
@@ -96,3 +96,9 @@ lycana diagrams --json
 - A diagram titled `Architecture` exists: setup is done. Return to the preflight in [SKILL.md](../SKILL.md).
 - None exists: the repository is not mapped yet. Tell the user, and ask whether to map it now. On yes, follow [map.md](map.md), which creates the Architecture diagram and the area diagrams. On no, stop using this skill for this task and say that the work was not checked against Lycana.
 - The project has diagrams, but none titled `Architecture`: ask the user whether one of them is the top diagram before creating anything. Do not rename a diagram to fit: a diagram's name cannot be sent as a proposal, and the person cannot undo the rename.
+
+## The Free plan limit
+
+An organization on Lycana's Free plan keeps three saved diagrams, which Lycana also calls saved canvases. Every top-level diagram in the organization counts, in any project. Subcanvases do not count. `lycana create` is refused when the organization already has three, with exit 1 and code `upgrade_required`; the same code comes back for an edit to a diagram the plan holds read-only. The message names a diagram that can still change. Paid plans have no limit.
+
+The tool does not report the plan. When a mapping would create diagrams and you do not know the plan, ask the user. [map.md](map.md) says how to map with few diagrams.
