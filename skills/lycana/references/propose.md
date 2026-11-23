@@ -75,8 +75,9 @@ This file adds a node for `services/billing` and a link to it from a node alread
   {"op": "put_in_boundary", "id": "<existing node id>", "boundary": "workers"}
   ```
 
-  Lycana sizes a boundary to wrap its members and arranges them inside it, so never `move` or `resize` one. Deleting a boundary keeps its members, which move up a level. When to draw one is in [map.md](map.md#group-every-canvas-with-boundaries).
-- A link joins two objects on the same canvas. To show a connection between canvases, link the nodes that hold them, one level up.
+  A boundary always wraps its members, so `resize` on one does nothing. Putting existing nodes in a boundary moves them and their neighbours: tell the user which, as [map.md](map.md#mapping-again) says. Deleting a boundary keeps its members, which move up a level. When to draw one is in [map.md](map.md#group-every-canvas-with-boundaries).
+- Lycana places new objects along their links, left to right. `near` puts a new node, boundary or note on one side of an object. It never moves an existing one. Send `move` only in a tidy, and how to shape a whole canvas is in [map.md](map.md#lay-the-canvas-out).
+- A link joins two objects on the same canvas. To show a connection between canvases, link the nodes that hold them, one level up. Its label prints three words and 24 characters at most: put longer wording in `details`.
 - Removing an object is the `delete` operation. Removing a node also removes its links. If the node has a subcanvas, read it first and list in step 4 what goes with the node.
 - To give a new node a subcanvas, add `{"op": "create_subcanvas", "node": "<tempId or id>", "tempId": "<your name>"}` to the same file. The canvas id arrives once the proposal is accepted (step 5); fill the subcanvas after that, with `--canvas`.
 
@@ -107,7 +108,7 @@ If the network fails mid-send, the message gives a `--request-id`. Retry with th
 
 Then tell the user, in a few lines:
 
-- what you proposed, as a plain list of nodes, links and boundaries added, changed and removed, and which nodes change boundary;
+- what you proposed, as a plain list of nodes, links and boundaries added, changed and removed, which nodes change boundary, and which will move;
 - which parts are inferred and not read from code;
 - which diagram and canvas, with the link to the canvas that holds the proposal. `lycana get <diagram id> [--canvas <canvas id>]` without `--json` prints that canvas's link on its last line. For a subcanvas, pass `--canvas`: the link then ends in the canvas id and opens the subcanvas, where Accept and Reject are. The diagram's own link opens the top canvas, a step away from the proposal;
 - that it waits for Accept or Reject in Lycana, and the proposal id.
